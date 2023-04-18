@@ -1,71 +1,70 @@
 #!/usr/bin/python3
-from sys import argv
-from linecache import getline
+from random import randint
 
 
-def first_prime_factor(n: int) -> int:
-    if n <= 3:
-        return (2)
-    if n % 2 == 0:
-        return (2)
-    if n % 3 == 0:
-        return (3)
-    limit = int(n ** 0.5)
-    sec_limit = n // 4
-    if sec_limit % 2 == 0:
-        sec_limit += 1
-    thi_limit = n // 2
-    frt_limit = sec_limit + sec_limit // 2
-    if limit % 2 == 0:
-        limit = limit + 1
-    i, j , k, l, m, o = 5, limit, sec_limit, sec_limit, thi_limit, frt_limit
-    p = frt_limit
-    while o < m:
-        if n % i == 0:
-            return (i)
-        if n % (i + 2) == 0:
-            return (i + 2)
-        if n % j == 0:
-            return (j)
-        if n % (j - 2) == 0:
-            return (j - 2)
-        if n % k == 0:
-            return (k)
-        if n % (k - 2) == 0:
-            return (k - 2)
-        if n % l == 0:
-            return (l)
-        if n % (l + 2) == 0:
-            return (l + 2)
-        if n % m == 0:
-            return (m)
-        if n % (m - 2) == 0:
-            return (m - 2)
-        if n % o == 0:
-            return (o)
-        if n % (o + 2) == 0:
-            return (o + 2)
-        if n % p == 0:
-            return (p)
-        if n % (p - 2) == 0:
-            return (p - 2)
-        i += 6
-        j -= 4
-        k -= 4
-        l += 4
-        m -= 4
-        o += 4
-        p -= 4
-    return (1)
+def gcd(a, b):
+    """ Returns the greatest common divisor of the two numbers
+    """
+    while b:
+        a, b = b, a % b
+    return a
 
 
-if __name__ == "__main__":
-    line = 1
-    while True:
-        line_str = getline(argv[1], line)
-        if (len(line_str) == 0):
-            break
-        num = int(line_str[:-1])
-        factor = first_prime_factor(num)
-        print("{}={}*{}".format(num, num // factor, factor))
-        line += 1
+def _pollard_brent_func(c, n, x):
+    """ Return f(x) = (x^2 + c) % n
+        Assume c < n
+    """
+    y = (x ** 2) % n + c
+    if y >= n:
+        y -= n
+
+    assert 0 <= y < n
+    return y
+
+
+def brent_factorise(n, iterations=None):
+    """ Perform Brent's variant of Pollard's rho factorization algorithm to
+        attempt to find a non-trivial factor of the given number number, n.
+        If iterations > 0, return None if no factors are found within its range
+    """
+    y, c, m = (randint(1, n - 1) for _ in range(3))
+    r, q, g = 1, 1, 1
+    i = 0
+    while g == 1:
+        x = y
+        for _ in range(r):
+            y = _pollard_brent_func(c, n, y)
+        k = 0
+        while k < r and g == 1:
+            ys = y
+            for _ in range(min(m, r - k)):
+                y = _pollard_brent_func(c, n, y)
+                q = (q * abs(x - y)) %  n
+            g = gcd(q, n)
+            k += m
+        r *= 2
+        if iterations:
+            i += 1
+            if i == iterations:
+                return None
+
+    if g == n:
+        while True:
+            ys = _pollard_brent_func(c, n, ys)
+            g = gcd(abs(x - ys), n)
+            if g > 1:
+                break
+    return g
+
+
+if __name__ == '__main__':
+    from sys import argv
+
+    if len(argv) != 2:
+        exit(1)
+
+    with open(argv[1], "r") as f:
+        for i in f:
+            n = int(i[:-1])
+            res = brent_factorise(n)
+            print("{}={}*{}".format(n, n // res, res))
